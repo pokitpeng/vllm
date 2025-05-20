@@ -24,7 +24,7 @@ async def forward_request(url, data):
                     yield content
 
 
-@app.route("/v1/completions", methods=["POST"])
+@app.route("/v1/chat/completions", methods=["POST"])
 async def handle_request():
     try:
         original_request_data = await request.get_json()
@@ -35,13 +35,13 @@ async def handle_request():
 
         # finish prefill
         async for _ in forward_request(
-            "http://localhost:8100/v1/completions", prefill_request
+            "http://localhost:8100/v1/chat/completions", prefill_request
         ):
             continue
 
         # return decode
         generator = forward_request(
-            "http://localhost:8200/v1/completions", original_request_data
+            "http://localhost:8200/v1/chat/completions", original_request_data
         )
         response = await make_response(generator)
         response.timeout = None
