@@ -107,18 +107,8 @@ if [ -n "$WHEEL_DIR" ]; then
     exit 0
 fi
 
-# Default behaviour: install built wheel
-if command -v uv >/dev/null 2>&1; then
-    echo "Installing DeepGEMM wheel using uv..."
-    if [ -n "$VLLM_DOCKER_BUILD_CONTEXT" ]; then
-        uv pip install --system dist/*.whl
-    else
-        uv pip install dist/*.whl
-    fi
-else
-    echo "Installing DeepGEMM wheel using pip..."
-    python3 -m pip install dist/*.whl
-fi
+echo "Installing DeepGEMM wheel using pip..."
+python3 -m pip install dist/*.whl
 
 popd
 echo "✅ DeepGEMM installation completed successfully"
