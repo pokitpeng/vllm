@@ -4,6 +4,44 @@
 # Optional: build wheels to a directory for later installation (useful in multi-stage builds)
 set -e
 
+# ================================================================================================================
+# 1. 自动寻找 Python 环境中所有 nvidia 组件的 include 目录并拼接到 CPATH
+export CPATH=$(find /usr/local/lib/python3.12/dist-packages/nvidia -name include -type d | tr '\n' ':' | sed 's/:$//'):$CPATH
+
+# 2. 同样的，把库文件路径也加上，防止下一步链接报错
+export LD_LIBRARY_PATH=$(find /usr/local/lib/python3.12/dist-packages/nvidia -name lib -type d | tr '\n' ':' | sed 's/:$//'):$LD_LIBRARY_PATH
+
+# 1. 自动寻找 Python 环境中所有 nvidia 组件的 lib 目录，并拼接到 LD_LIBRARY_PATH 和 LIBRARY_PATH
+# LIBRARY_PATH 是给编译链接阶段用的，LD_LIBRARY_PATH 是给运行阶段用的
+export NV_LIBS=$(find /usr/local/lib/python3.12/dist-packages/nvidia -name lib -type d | tr '\n' ':' | sed 's/:$//')
+
+export LIBRARY_PATH=$NV_LIBS:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$NV_LIBS:$LD_LIBRARY_PATH
+
+# 2. 补一个软链接（保险起见，有些脚本硬编码了 /usr/local/cuda/lib64）
+mkdir -p /usr/local/cuda/lib64
+ln -sf /usr/local/lib/python3.12/dist-packages/nvidia/nvrtc/lib/libnvrtc.so.12 /usr/local/cuda/lib64/libnvrtc.so
+
+
+# 1. 定义路径（根据你刚才 find 的结果）
+NVRTC_DIR=/usr/local/lib/python3.12/dist-packages/nvidia/cuda_nvrtc/lib
+
+# 2. 创建一个不带版本号的软链接，这是链接器能识别 `-lnvrtc` 的关键
+ln -sf $NVRTC_DIR/libnvrtc.so.12 $NVRTC_DIR/libnvrtc.so
+
+# 3. 将该路径加入到链接器的搜索优先级中
+export LIBRARY_PATH=$NVRTC_DIR:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$NVRTC_DIR:$LD_LIBRARY_PATH
+
+# 4. (预防性措施) 顺便检查下 cudart 是否也有同样问题
+CUDART_DIR=/usr/local/lib/python3.12/dist-packages/nvidia/cuda_runtime/lib
+if [ -d "$CUDART_DIR" ]; then
+    ln -sf $CUDART_DIR/libcudart.so.12 $CUDART_DIR/libcudart.so
+    export LIBRARY_PATH=$CUDART_DIR:$LIBRARY_PATH
+    export LD_LIBRARY_PATH=$CUDART_DIR:$LD_LIBRARY_PATH
+fi
+# ================================================================================================================
+
 # Default values
 DEEPGEMM_GIT_REPO="https://github.com/deepseek-ai/DeepGEMM.git"
 DEEPGEMM_GIT_REF="477618cd51baffca09c4b0b87e97c03fe827ef03"
